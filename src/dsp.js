@@ -141,6 +141,7 @@ export class DSP {
 
   setMarkerOptions(opts) {
     if (opts?.color) this.markerColor = opts.color;
+    if (opts?.fanColor) this.markerFanColor = opts.fanColor;
     if (typeof opts?.harmonics === "boolean") this.markerHarmonics = opts.harmonics;
   }
 

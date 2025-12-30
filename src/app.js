@@ -47,12 +47,20 @@ const startMqttPolling = () => {
 const applyMqttSettings = () => {
   const s = ui.getSettings();
   const pollSec = clamp(Number(s.mqttPollSec || 1), 1, 60);
+  const pollEnabled = !!s.mqttPollEnabled;
   MQTT_CONFIG.requestIntervalMs = pollSec * 1000;
   dsp.setMarkerOptions({
     color: s.markerColor,
+    fanColor: s.markerFanColor,
     harmonics: s.markerHarmonics,
   });
-  if (mqttConnected) startMqttPolling();
+  if (mqttConnected) {
+    if (pollEnabled) startMqttPolling();
+    else {
+      if (mqttTimer) window.clearInterval(mqttTimer);
+      mqttTimer = 0;
+    }
+  }
 };
 
 if (mqttClient) {
@@ -64,7 +72,7 @@ if (mqttClient) {
     mqttClient.subscribe(MQTT_CONFIG.topic);
     mqttClient.subscribe(MQTT_CONFIG.fanTopic);
     applyMqttSettings();
-    startMqttPolling();
+    if (ui.getSettings().mqttPollEnabled) startMqttPolling();
   });
 
   mqttClient.on("message", (topic, payload) => {

@@ -1,0 +1,126 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{hyperref}
+
+\title{Real-Time Acoustic Spectrum and Waterfall Analysis for Heat Pump Vibration Monitoring}
+\author{Tobiasz Keller}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This paper describes a browser-based system for real-time acoustic spectrum and waterfall analysis of a heat pump installation. The system ingests RTSP audio from a nearby camera, converts it to WebRTC via go2rtc, and renders a live spectrum and waterfall view using the Web Audio API. Operational telemetry (compressor and fan speed in revolutions per second) is retrieved through Home Assistant and ebusd via MQTT over WebSocket and overlaid as marker lines, including optional harmonic multiples. The result is a practical tool to correlate audible vibration signatures with machine state and to support troubleshooting, tuning, and monitoring.
+\end{abstract}
+
+\section{Introduction}
+Heat pumps can generate noticeable vibrations due to rotating machinery and mechanical coupling. These vibrations often manifest as tonal components in the audible spectrum, with fundamental frequencies that match rotational speeds and harmonics that reveal non-linearities and structural resonances. Visualizing such signals in real time improves interpretability beyond listening alone.
+
+The system presented here aims to connect three data domains: (1) live acoustic measurements, (2) an interactive spectrum and waterfall visualization for temporal context, and (3) telemetry signals (compressor and fan speed) that provide ground truth for expected tonal frequencies. By overlaying measured spectra with computed marker frequencies, the operator can quickly validate whether observed peaks align with known rotation rates or indicate abnormal behavior.
+
+\section{System Overview}
+Figure~\ref{fig:pipeline} summarizes the data path. A Unifi G4 Bullet camera is mounted near the heat pump to capture audio and vibration-related sound. The camera provides an RTSP stream, which go2rtc converts into a WebRTC stream consumable by a browser. A web application uses the Web Audio API to compute the FFT and render both spectrum and waterfall views. Separately, Home Assistant exposes ebusd-derived RPM values through MQTT, which the web application consumes over WebSocket to overlay markers.
+
+\begin{figure}[h]
+  \centering
+  \fbox{\parbox{0.9\linewidth}{\centering
+  RTSP audio (camera) $\rightarrow$ go2rtc $\rightarrow$ WebRTC $\rightarrow$ Web Audio FFT $\rightarrow$ Spectrum/Waterfall\\
+  ebusd $\rightarrow$ Home Assistant $\rightarrow$ MQTT over WebSocket $\rightarrow$ Marker overlay}}
+  \caption{Data pipeline for audio analysis and telemetry integration.}
+  \label{fig:pipeline}
+\end{figure}
+
+\section{Data Acquisition}
+\subsection{Audio Stream}
+The Unifi G4 Bullet camera provides continuous RTSP audio. RTSP is converted to WebRTC by go2rtc, allowing browser access with low latency. WebRTC is preferable to direct RTSP playback in the browser due to native support and better synchronization with Web Audio processing.
+
+\subsection{Telemetry via MQTT}
+The heat pump is integrated with Home Assistant via ebusd. Two telemetry channels are relevant:
+\begin{itemize}
+  \item \texttt{ebusd/hmu/RunDataCompressorSpeed}
+  \item \texttt{ebusd/hmu/RunDataFan1Speed}
+\end{itemize}
+Each value is delivered in revolutions per second (RPS), which directly maps to Hertz for spectral visualization. Values are polled once per second by publishing a \texttt{/get} request topic, and the response payload is parsed from JSON.
+
+\section{Signal Processing}
+\subsection{FFT Computation}
+The browser uses an \texttt{AnalyserNode} with configurable FFT size $N$ and smoothing. For each frame, the magnitude spectrum is computed. The FFT is defined as:
+\begin{equation}
+X[k] = \sum_{n=0}^{N-1} x[n] e^{-j 2 \pi k n / N}, \quad k \in [0, N-1].
+\end{equation}
+The magnitude spectrum is $|X[k]|$, and the frequency associated with bin $k$ is:
+\begin{equation}
+f_k = \frac{k}{N} \cdot f_s,
+\end{equation}
+where $f_s$ is the sample rate.
+
+\subsection{Linear Amplitude Display}
+To maintain interpretability for non-technical users, the spectrum is displayed in linear amplitude rather than logarithmic dB scale. The Web Audio API provides FFT magnitudes mapped from dB to a byte range; these values are converted back to a normalized linear amplitude $A \in [0,1]$ based on \texttt{minDecibels} and \texttt{maxDecibels}. This avoids double-log compression and helps highlight tonal lines.
+
+\subsection{Waterfall Rendering}
+The waterfall is constructed by drawing one spectrum line per time step into a scrolling image buffer. The update interval is derived from the desired visible time window $T$:
+\begin{equation}
+\Delta t = \frac{T}{H},
+\end{equation}
+where $H$ is the visible waterfall height. A larger history buffer allows the user to scroll into the past within the waterfall panel without affecting the page layout.
+
+\section{Marker Overlay and Harmonics}
+Telemetry values in RPS map directly to a fundamental frequency $f_0$ in Hz. The system overlays a vertical marker line at $f_0$ and, optionally, at harmonic frequencies:
+\begin{equation}
+f_k = k \cdot f_0, \quad k = 2,3,\dots,K.
+\end{equation}
+Harmonics are important because rotating machinery typically produces multiples of the base rotation frequency. These multiples can arise from mechanical imbalance, structural resonance, or acoustic coupling.
+
+Both the compressor and fan speeds are supported, each with its own marker color. Marker pixels are also inserted into the waterfall, providing a persistent reference trace that can be compared against spectral energy over time.
+
+\section{Stable Peak Detection}
+To highlight persistent tonal components, the system maintains an exponential moving average (EMA) of the rendered spectrum line:
+\begin{equation}
+\bar{A}_t = \bar{A}_{t-1} + \alpha (A_t - \bar{A}_{t-1}),
+\end{equation}
+with $\alpha$ set to a small value for stability. Local maxima above a minimum amplitude are extracted and the top five peaks are labeled directly in the spectrum. This helps identify dominant frequencies that remain over time, distinguishing them from transient noise.
+
+\section{User Interaction and Controls}
+The interface is organized into six main control groups (analysis, range and filters, expander, output, MQTT, and source). Key parameters include:
+\begin{itemize}
+  \item FFT size and smoothing for resolution and stability
+  \item Gain and AutoGain for display scaling
+  \item Frequency range limits and optional logarithmic x-axis
+  \item Highpass/Lowpass filters to isolate frequency bands
+  \item MQTT polling interval and marker configuration
+  \item Toggle for harmonic overlays
+\end{itemize}
+Controls are collapsible to maximize screen area for the waterfall during continuous monitoring.
+
+\section{Use Case: Heat Pump Vibration Monitoring}
+The primary use case is a heat pump that generates audible vibrations. A nearby camera captures audio; go2rtc converts the RTSP stream to WebRTC; the application renders the spectrum and waterfall in real time. The compressor speed from ebusd provides a ground-truth frequency. If a strong spectral peak aligns with the compressor marker and its harmonics, the vibration can be attributed to compressor rotation. Deviations or unexpected peaks may indicate resonance or mechanical issues.
+
+Similarly, the fan speed marker helps disambiguate tonal components from airflow-induced noise. Over time, the waterfall reveals how these components evolve during startup, steady-state, and shutdown.
+
+\section{Limitations}
+Several limitations are inherent to the setup:
+\begin{itemize}
+  \item Camera microphones are not calibrated; absolute amplitude is not reliable.
+  \item WebRTC introduces compression that can shape the spectrum.
+  \item Environmental noise may mask low-amplitude tones.
+  \item The mapping from rotational speed to acoustic frequency assumes a dominant tonal component; some systems emit multiple coupled modes.
+  \item Browser-based FFT resolution is limited by available CPU and latency constraints.
+\end{itemize}
+
+\section{Future Work}
+Potential extensions include automatic anomaly detection, long-term logging, spectral trend analysis, and correlation of multiple sensors. Adding configurable dB/linear display modes, calibrated microphones, and multi-channel support would further improve diagnostic accuracy.
+
+\section{Conclusion}
+This work demonstrates a practical, browser-based workflow for correlating heat pump acoustics with operational telemetry. By combining a live spectrum, a scrollable waterfall, and telemetry-derived marker lines (including harmonics), the system provides a clear and actionable view of vibration behavior. The architecture leverages existing infrastructure (RTSP cameras, go2rtc, Home Assistant, MQTT) and can be deployed with minimal additional hardware.
+
+\begin{thebibliography}{9}
+\bibitem{webaudio} Web Audio API. \url{https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API}
+\bibitem{webrtc} WebRTC. \url{https://webrtc.org/}
+\bibitem{mqtt} MQTT v3.1.1. \url{https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/mqtt-v3.1.1.html}
+\bibitem{go2rtc} go2rtc project. \url{https://github.com/AlexxIT/go2rtc}
+\end{thebibliography}
+
+\end{document}

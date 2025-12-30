@@ -55,8 +55,10 @@ export class UI {
       mqttFanValue: $("mqttFanValue"),
       mqttTopic: $("mqttTopic"),
       mqttFanTopic: $("mqttFanTopic"),
+      mqttPollEnabled: $("mqttPollEnabled"),
       mqttPoll: $("mqttPoll"),
       mqttColor: $("mqttColor"),
+      mqttFanColor: $("mqttFanColor"),
       mqttHarmonics: $("mqttHarmonics"),
 
       spec: $("spec"),
@@ -102,7 +104,7 @@ export class UI {
       this.el.hpHz, this.el.lpHz,
       this.el.expOn, this.el.expThresh, this.el.expRatio, this.el.expAtk, this.el.expRel,
       this.el.audioOut,
-      this.el.mqttPoll, this.el.mqttColor, this.el.mqttHarmonics
+      this.el.mqttPollEnabled, this.el.mqttPoll, this.el.mqttColor, this.el.mqttFanColor, this.el.mqttHarmonics
     ].forEach((x) => x.addEventListener("input", onChange));
 
     // Save settings to cookie.
@@ -200,8 +202,10 @@ export class UI {
       expReleaseMs: parseFloat(this.el.expRel.value),
 
       audioOut: !!this.el.audioOut.checked,
+      mqttPollEnabled: !!this.el.mqttPollEnabled?.checked,
       mqttPollSec: parseInt(this.el.mqttPoll?.value || "1", 10),
       markerColor: this.el.mqttColor?.value || "#f6b21a",
+      markerFanColor: this.el.mqttFanColor?.value || "#3bd4ff",
       markerHarmonics: !!this.el.mqttHarmonics?.checked,
     };
   }
@@ -258,6 +262,11 @@ export class UI {
       set(this.el.expRel, s.expReleaseMs);
 
       set(this.el.audioOut, s.audioOut, "checked");
+      set(this.el.mqttPollEnabled, s.mqttPollEnabled, "checked");
+      set(this.el.mqttPoll, s.mqttPollSec);
+      set(this.el.mqttColor, s.markerColor);
+      set(this.el.mqttFanColor, s.markerFanColor);
+      set(this.el.mqttHarmonics, s.markerHarmonics, "checked");
     } catch {}
   }
 
@@ -283,6 +292,11 @@ export class UI {
     this.el.expRel.value = "200";
 
     this.el.audioOut.checked = false;
+    this.el.mqttPollEnabled.checked = true;
+    this.el.mqttPoll.value = "1";
+    this.el.mqttColor.value = "#f6b21a";
+    this.el.mqttFanColor.value = "#3bd4ff";
+    this.el.mqttHarmonics.checked = true;
 
     this.updateValueTexts();
   }

@@ -1,12 +1,15 @@
-﻿export class DSP {
+export class DSP {
   constructor(config, ui) {
+    // External dependencies
     this.config = config;
     this.ui = ui;
 
+    // Signaling + WebRTC state
     this.ws = null;
     this.pc = null;
     this.audioCtx = null;
 
+    // Audio graph nodes
     this.sourceNode = null;
     this.hpNode = null;
     this.lpNode = null;
@@ -14,27 +17,30 @@
     this.analyser = null;
     this.outGain = null;
 
+    // FFT data buffer
     this.freqData = null;
 
+    // Render loop state
     this.running = false;
     this.raf = 0;
     this.lastWfTime = 0;
 
-    // display noise floor estimator (optional)
+    // Display noise floor estimator (optional).
     this.noiseFloor = null;
+    this.useNoiseFloor = false;
 
-    // autogain for display only
+    // Auto gain for display only
     this.renderGain = 1.0;
     this.AUTO_TARGET = 190;
     this.AUTO_SMOOTH = 0.03;
 
-    // canvases
+    // Canvas setup
     this.spec = ui.el.spec;
     this.wf = ui.el.wf;
     this.specG = this.spec.getContext("2d", { alpha:false });
     this.wfG = this.wf.getContext("2d", { alpha:false });
 
-    // cursor overlay uses ui.cursorX
+    // Cursor overlay uses ui.cursorX (local tracking here)
     this.spec.addEventListener("mousemove", (e) => {
       const rect = this.spec.getBoundingClientRect();
       this.cursorX = e.clientX - rect.left;
@@ -42,19 +48,23 @@
     this.spec.addEventListener("mouseleave", () => { this.cursorX = null; });
   }
 
+  // Clamp numeric values to an inclusive range.
   clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
 
+  // Build WebSocket URL from configured HTTP(S) base.
   wsUrl() {
     const u = new URL(this.config.go2rtcHost);
     const proto = (u.protocol === "https:") ? "wss:" : "ws:";
     return `${proto}//${u.host}/api/ws?src=${encodeURIComponent(this.config.src)}`;
   }
 
+  // Current Nyquist frequency based on the AudioContext sample rate.
   currentNyq() {
     const fs = this.audioCtx ? this.audioCtx.sampleRate : 48000;
     return fs/2;
   }
 
+  // Normalize and validate display settings (freq range, log scale, padding).
   getRange() {
     const s = this.ui.getSettings();
     const nyq = this.currentNyq();
@@ -66,10 +76,12 @@
     fMax = this.clamp(fMax, 1, nyq);
     if (fMax <= fMin) fMax = Math.min(nyq, fMin + 1);
 
+    // For log scale we must avoid <= 0 to keep log() valid.
     const fMinForLog = Math.max(1, fMin);
     return { ...s, nyq, fMin, fMax, fMinForLog };
   }
 
+  // Convert normalized X (0..1) to frequency, respecting log/linear mode.
   xNormToF(xNorm) {
     const r = this.getRange();
     const t = this.clamp(xNorm, 0, 1);
@@ -78,6 +90,7 @@
     return r.fMinForLog * Math.pow(ratio, t);
   }
 
+  // Convert frequency to normalized X (0..1) for plot positioning.
   fToXNorm(f) {
     const r = this.getRange();
     const ff = this.clamp(f, r.fMin, r.fMax);
@@ -85,12 +98,14 @@
     return Math.log(ff / r.fMinForLog) / Math.log(r.fMax / r.fMinForLog);
   }
 
+  // Map frequency to FFT bin index.
   binForFreq(f) {
     const nyq = this.currentNyq();
     const bins = this.freqData.length;
     return this.clamp(Math.floor((f / nyq) * bins), 0, bins - 1);
   }
 
+  // Waterfall color map for 0..255 intensity.
   colorMap(v) {
     const x = v / 255;
     const r = this.clamp(255 * Math.pow(x, 0.9), 0, 255);
@@ -99,34 +114,39 @@
     return [r|0, g|0, b|0];
   }
 
-  magToDb(vByte) {
-    const x = Math.max(vByte / 255, 1e-6);
-    return 20 * Math.log10(x);
+  // Convert analyser byte (0..255) to linear amplitude (0..1), normalized to maxDecibels.
+  byteToAmp(vByte) {
+    const minDb = this.analyser ? this.analyser.minDecibels : -100;
+    const maxDb = this.analyser ? this.analyser.maxDecibels : -30;
+    const db = minDb + (vByte / 255) * (maxDb - minDb);
+    return Math.pow(10, (db - maxDb) / 20);
   }
 
   async start() {
     if (this.running) return;
     this.ui.setStatus("init");
 
+    // AudioContext must be resumed from a user gesture in browsers.
     this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     await this.audioCtx.resume();
     this.ui.setSampleRate(this.audioCtx.sampleRate);
 
-    // Load worklet
+    // Load the expander worklet before creating the node.
     await this.audioCtx.audioWorklet.addModule("./gate-worklet.js");
 
-    // nodes
+    // Core analyser node (FFT).
     this.analyser = this.audioCtx.createAnalyser();
     const s = this.ui.getSettings();
     this.analyser.fftSize = s.fftSize;
     this.analyser.smoothingTimeConstant = s.smoothing;
     this.freqData = new Uint8Array(this.analyser.frequencyBinCount);
 
+    // Optional audio output (muted by default).
     this.outGain = this.audioCtx.createGain();
     this.outGain.gain.value = 1.0;
     this.outGain.connect(this.audioCtx.destination);
 
-    // signalling
+    // Signaling to go2rtc over WebSocket.
     this.ui.setStatus("ws open");
     this.ws = new WebSocket(this.wsUrl());
 
@@ -164,7 +184,7 @@
   onTrack(e) {
     const stream = e.streams[0];
 
-    // chain: source -> HP -> LP -> Expander -> Analyser -> (optional out)
+    // Chain: source -> HP -> LP -> Expander -> Analyser -> (optional out)
     this.sourceNode = this.audioCtx.createMediaStreamSource(stream);
 
     this.hpNode = this.audioCtx.createBiquadFilter();
@@ -182,10 +202,11 @@
     this.lpNode.connect(this.expNode);
     this.expNode.connect(this.analyser);
 
-    // optional audio out
+    // Optional audio out
     const s = this.ui.getSettings();
     this.setAudioOut(s.audioOut);
 
+    // Reset display state for a clean start.
     this.noiseFloor = null;
     this.renderGain = 1.0;
     this.lastWfTime = 0;
@@ -198,6 +219,7 @@
   }
 
   stop() {
+    // Stop render loop first to avoid touching freed nodes.
     this.running = false;
     cancelAnimationFrame(this.raf);
 
@@ -226,6 +248,7 @@
     if (this.hpNode) this.hpNode.frequency.value = this.clamp(s.hpHz || 0, 0, nyq);
     if (this.lpNode) this.lpNode.frequency.value = this.clamp(s.lpHz || nyq, 10, nyq);
 
+    // Update expander parameters via AudioParam for smooth changes.
     if (this.expNode) {
       const p = this.expNode.parameters;
       p.get("enabled").setValueAtTime(s.expOn ? 1 : 0, this.audioCtx.currentTime);
@@ -238,6 +261,7 @@
     this.setAudioOut(s.audioOut);
   }
 
+  // Connect or disconnect audio output without affecting the analyser.
   setAudioOut(enabled) {
     if (!this.analyser || !this.outGain) return;
     try { this.analyser.disconnect(); } catch {}
@@ -248,41 +272,46 @@
     const r = this.getRange();
     const plotW = this.spec.width - r.pad.left - r.pad.right;
 
-    // noise floor init
-    if (!this.noiseFloor || this.noiseFloor.length !== this.freqData.length) {
-      this.noiseFloor = new Float32Array(this.freqData.length);
-      for (let i=0;i<this.noiseFloor.length;i++) this.noiseFloor[i] = this.freqData[i];
-    }
+    if (this.useNoiseFloor) {
+      // Noise floor init.
+      if (!this.noiseFloor || this.noiseFloor.length !== this.freqData.length) {
+        this.noiseFloor = new Float32Array(this.freqData.length);
+        for (let i=0;i<this.noiseFloor.length;i++) this.noiseFloor[i] = this.freqData[i];
+      }
 
-    // update noise floor (very slow follower)
-    for (let i=0;i<this.freqData.length;i++) {
-      const v = this.freqData[i];
-      const nf = this.noiseFloor[i];
-      this.noiseFloor[i] = v < nf ? (nf + (v - nf) * 0.05) : (nf + (v - nf) * 0.001);
+      // Update noise floor with a very slow follower.
+      for (let i=0;i<this.freqData.length;i++) {
+        const v = this.freqData[i];
+        const nf = this.noiseFloor[i];
+        this.noiseFloor[i] = v < nf ? (nf + (v - nf) * 0.05) : (nf + (v - nf) * 0.001);
+      }
     }
 
     const line = new Uint8Array(plotW);
     let peak = 1;
 
+    // Build one spectrum line in screen pixels.
     for (let px=0; px<plotW; px++) {
       const f = this.xNormToF(px / plotW);
       const i = this.binForFreq(f);
 
       const raw = this.freqData[i];
-      const sub = Math.max(0, raw - this.noiseFloor[i]); // display noise reduction
+      const sub = this.useNoiseFloor ? Math.max(0, raw - this.noiseFloor[i]) : raw;
+      const amp = this.byteToAmp(sub);
 
-      let v = Math.min(255, sub * r.gain);
+      let v = Math.min(255, amp * 255 * r.gain);
       line[px] = v;
       if (v > peak) peak = v;
     }
 
-    // autogain (display)
+    // Auto gain (display only).
     if (r.autoGain) {
       const target = peak > 0 ? (this.AUTO_TARGET / peak) : 1.0;
       this.renderGain = this.renderGain + (target - this.renderGain) * this.AUTO_SMOOTH;
     } else {
       this.renderGain = 1.0;
     }
+    this.ui.setAutoGainValue(this.renderGain);
 
     if (this.renderGain !== 1.0) {
       for (let px=0; px<line.length; px++) line[px] = this.clamp(line[px] * this.renderGain, 0, 255);
@@ -299,10 +328,11 @@
     const plotW = w - r.pad.left - r.pad.right;
     const plotH = h - r.pad.top - r.pad.bottom;
 
+    // Background
     g.fillStyle = "#0b0f14";
     g.fillRect(0,0,w,h);
 
-    // grid
+    // Grid and labels
     g.strokeStyle = "#1d2633";
     g.fillStyle = "#b9c7dd";
     g.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
@@ -323,34 +353,33 @@
       g.fillText(label, x - 10, h - 8);
     }
 
-    // y ticks
-    const dbMin = -90, dbMax = 0;
+    // Y ticks (linear amplitude)
     for (let t=0; t<=6; t++) {
       const y = r.pad.top + (t/6)*plotH;
       g.beginPath();
       g.moveTo(r.pad.left, y);
       g.lineTo(r.pad.left + plotW, y);
       g.stroke();
-      const db = (dbMax - (t/6)*(dbMax-dbMin)).toFixed(0) + " dB";
-      g.fillText(db, 8, y + 4);
+      const amp = (1 - (t/6)).toFixed(2);
+      g.fillText(amp, 8, y + 4);
     }
 
     g.strokeStyle = "#2b3a52";
     g.strokeRect(r.pad.left, r.pad.top, plotW, plotH);
 
-    // line
+    // Spectrum line
     g.strokeStyle = "#e8eef7";
     g.beginPath();
     for (let px=0; px<plotW; px++) {
       const v = line[px];
-      const db = this.clamp(this.magToDb(v), dbMin, dbMax);
-      const y = r.pad.top + (1 - (db - dbMin)/(dbMax-dbMin))*plotH;
+      const amp = this.clamp(v / 255, 0, 1);
+      const y = r.pad.top + (1 - amp) * plotH;
       const x = r.pad.left + px;
       if (px===0) g.moveTo(x,y); else g.lineTo(x,y);
     }
     g.stroke();
 
-    // cursor overlay inside plot
+    // Cursor overlay inside plot
     if (this.cursorX !== null) {
       const px = this.clamp(this.cursorX - r.pad.left, 0, plotW);
       const f = this.xNormToF(px / plotW);
@@ -370,15 +399,16 @@
     const plotX = r.pad.left;
     const plotW = w - r.pad.left - r.pad.right;
 
-    // side areas
+    // Side areas (pad)
     g.fillStyle = "#0b0f14";
     g.fillRect(0,0,r.pad.left,h);
     g.fillRect(w-r.pad.right,0,r.pad.right,h);
 
-    // scroll only plot area
+    // Scroll only plot area by one pixel row.
     const img = g.getImageData(plotX, 0, plotW, h-1);
     g.putImageData(img, plotX, 1);
 
+    // Write new row at the top.
     const row = g.createImageData(plotW, 1);
     for (let px=0; px<plotW; px++) {
       const v = line[px] | 0;
@@ -392,11 +422,13 @@
   tick(ts) {
     if (!this.running) return;
 
+    // Pull current FFT data into freqData.
     this.analyser.getByteFrequencyData(this.freqData);
 
     const line = this.buildLine();
     this.drawSpectrum(line);
 
+    // Waterfall updates at a fixed rate based on target seconds.
     const r = this.getRange();
     const wfSeconds = Math.max(5, r.wfSeconds || 60);
     const intervalMs = (wfSeconds * 1000) / this.wf.height;

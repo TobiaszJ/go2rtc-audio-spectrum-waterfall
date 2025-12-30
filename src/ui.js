@@ -1,4 +1,4 @@
-﻿export class UI {
+export class UI {
   constructor(config) {
     this.config = config;
     this.cookieKey = "webrtc_fft_wf_settings_v3";
@@ -8,9 +8,10 @@
       change: () => {},
     };
 
+    // Padding used by DSP to layout axes and labels.
     this.PAD = { top:24, bottom:26, left:56, right:10 };
 
-    // bind elements
+    // Bind DOM elements by ID.
     const $ = (id) => document.getElementById(id);
 
     this.el = {
@@ -23,6 +24,7 @@
       btnStop: $("btnStop"),
       btnSave: $("btnSave"),
       btnReset: $("btnReset"),
+      btnToggleControls: $("btnToggleControls"),
 
       fftSize: $("fftSize"),
       smooth: $("smooth"),
@@ -30,6 +32,7 @@
       gain: $("gain"),
       gainVal: $("gainVal"),
       autoGain: $("autoGain"),
+      autoGainVal: $("autoGainVal"),
 
       fMin: $("fMin"),
       fMax: $("fMax"),
@@ -51,9 +54,11 @@
       wf: $("wf"),
     };
 
+    // Show config in the header.
     this.el.hostLabel.textContent = config.go2rtcHost;
     this.el.srcLabel.textContent = config.src;
 
+    // Cursor tracking (used for spectrum overlay).
     this.cursorHz = null;
     this.el.spec.addEventListener("mousemove", (e) => {
       const rect = this.el.spec.getBoundingClientRect();
@@ -61,6 +66,7 @@
     });
     this.el.spec.addEventListener("mouseleave", () => { this.cursorX = null; });
 
+    // Resize canvases when window size changes.
     window.addEventListener("resize", () => this.resizeCanvases());
   }
 
@@ -69,9 +75,12 @@
     this.updateValueTexts();
     this.resizeCanvases();
 
+    // Wire up main buttons.
     this.el.btnStart.addEventListener("click", this.handlers.start);
     this.el.btnStop.addEventListener("click", this.handlers.stop);
+    this.el.btnToggleControls.addEventListener("click", () => this.toggleControls());
 
+    // Any input change updates labels and triggers DSP settings update.
     const onChange = () => {
       this.updateValueTexts();
       this.handlers.change();
@@ -85,12 +94,14 @@
       this.el.audioOut
     ].forEach((x) => x.addEventListener("input", onChange));
 
+    // Save settings to cookie.
     this.el.btnSave.addEventListener("click", () => {
       this.saveToCookie();
       this.setStatus("saved");
       setTimeout(() => this.setStatus("idle"), 600);
     });
 
+    // Reset to defaults and persist.
     this.el.btnReset.addEventListener("click", () => {
       this.resetDefaults();
       this.saveToCookie();
@@ -117,11 +128,24 @@
   }
 
   updateValueTexts() {
+    // Keep small labels in sync with slider values.
     this.el.smoothVal.textContent = Number(this.el.smooth.value).toFixed(2);
     this.el.gainVal.textContent = Number(this.el.gain.value).toFixed(2);
   }
 
+  setAutoGainValue(v) {
+    if (!this.el.autoGainVal) return;
+    this.el.autoGainVal.textContent = Number(v).toFixed(2);
+  }
+
+  toggleControls() {
+    document.body.classList.toggle("controls-collapsed");
+    const isCollapsed = document.body.classList.contains("controls-collapsed");
+    this.el.btnToggleControls.textContent = isCollapsed ? "Expand v" : "Collapse ^";
+  }
+
   resizeCanvases() {
+    // Maintain a usable minimum size and adjust with viewport.
     const w = Math.max(900, Math.floor(window.innerWidth - 20));
     this.el.spec.width = w;
     this.el.wf.width = w;
@@ -130,6 +154,7 @@
   }
 
   getSettings() {
+    // Read current values from the DOM and normalize to numbers/booleans.
     return {
       pad: this.PAD,
       fftSize: parseInt(this.el.fftSize.value, 10),
@@ -180,6 +205,7 @@
       if (!saved) return;
       const s = JSON.parse(saved);
 
+      // Small helper to apply optional values.
       const set = (el, v, type="value") => {
         if (v === undefined || v === null) return;
         if (type === "checked") el.checked = !!v;
@@ -210,6 +236,7 @@
   }
 
   resetDefaults() {
+    // Defaults match the HTML initial values.
     this.el.fftSize.value = "2048";
     this.el.smooth.value = "0.65";
     this.el.gain.value = "1";

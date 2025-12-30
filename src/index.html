@@ -1,110 +1,139 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="de-CH">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>go2rtc WebRTC Audio – Spectrum + Waterfall</title>
+  <title>go2rtc WebRTC Audio - Spectrum + Waterfall</title>
+  <!-- App styles -->
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
+  <!-- Header controls and status -->
   <header>
-    <div class="pill">go2rtc: <b id="hostLabel"></b></div>
-    <div class="pill">src: <b id="srcLabel"></b></div>
-    <div class="pill">Fs: <b id="fsLabel">-</b> Hz | Nyq: <b id="nyqLabel">-</b> Hz</div>
+    <div class="controls-bar">
+      <div class="title">Controls</div>
+      <button id="btnToggleControls" class="btn-toggle" type="button">Collapse ^</button>
+    </div>
 
-    <button id="btnStart">Start</button>
-    <button id="btnStop" disabled>Stop</button>
+    <div class="group">
+      <div class="group-title">Source</div>
+      <div class="pill">go2rtc: <b id="hostLabel"></b></div>
+      <div class="pill">src: <b id="srcLabel"></b></div>
+      <div class="pill">Fs: <b id="fsLabel">-</b> Hz | Nyq: <b id="nyqLabel">-</b> Hz</div>
+      <div class="row">
+        <button id="btnStart">Start</button>
+        <button id="btnStop" disabled>Stop</button>
+      </div>
+      <div class="tiny" id="status">Status: idle</div>
+    </div>
 
-    <label class="tiny">FFT
-      <select id="fftSize">
-        <option>1024</option>
-        <option selected>2048</option>
-        <option>4096</option>
-        <option>8192</option>
-      </select>
-    </label>
+    <div class="group">
+      <div class="group-title">Analysis</div>
+      <label class="control">FFT
+        <select id="fftSize">
+          <option>1024</option>
+          <option selected>2048</option>
+          <option>4096</option>
+          <option>8192</option>
+        </select>
+      </label>
 
-    <label class="tiny">Smoothing <span class="value" id="smoothVal">0.65</span>
-      <input id="smooth" type="range" min="0" max="0.95" step="0.05" value="0.65" />
-    </label>
+      <label class="control">Smoothing <span class="value" id="smoothVal">0.65</span>
+        <input id="smooth" type="range" min="0" max="0.95" step="0.05" value="0.65" />
+      </label>
 
-    <label class="tiny">Gain <span class="value" id="gainVal">1.00</span>
-      <input id="gain" type="range" min="0" max="8" step="0.05" value="1" />
-    </label>
+      <label class="control">Gain <span class="value" id="gainVal">1.00</span>
+        <input id="gain" type="range" min="1" max="100" step="1" value="10" />
+      </label>
 
-    <label class="tiny">AutoGain
-      <input id="autoGain" type="checkbox" checked />
-    </label>
+      <label class="control">AutoGain <span class="value" id="autoGainVal">1.00</span>
+        <input id="autoGain" type="checkbox" checked />
+      </label>
+    </div>
 
-    <label class="tiny">Fmin (Hz)
-      <input id="fMin" type="number" min="0" step="1" value="10" />
-    </label>
+    <div class="group">
+      <div class="group-title">Range</div>
+      <label class="control">Fmin (Hz)
+        <input id="fMin" type="number" min="0" step="1" value="10" />
+      </label>
 
-    <label class="tiny">Fmax (Hz)
-      <input id="fMax" type="number" min="1" step="1" value="4000" />
-    </label>
+      <label class="control">Fmax (Hz)
+        <input id="fMax" type="number" min="1" step="1" value="4000" />
+      </label>
+    </div>
 
-    <label class="tiny">
-      <input id="logScale" type="checkbox" checked />
-      Log
-    </label>
+    <div class="group">
+      <div class="group-title">Filters</div>
+      <label class="control">HP (Hz)
+        <input id="hpHz" type="number" min="0" step="1" value="80" />
+      </label>
 
-    <label class="tiny">Waterfall (s)
-      <input id="wfSeconds" type="number" min="5" step="1" value="60" />
-    </label>
+      <label class="control">LP (Hz)
+        <input id="lpHz" type="number" min="10" step="1" value="4000" />
+      </label>
+    </div>
 
-    <label class="tiny">HP (Hz)
-      <input id="hpHz" type="number" min="0" step="1" value="80" />
-    </label>
+    <div class="group">
+      <div class="group-title">Expander</div>
+      <label class="control">Expander
+        <input id="expOn" type="checkbox" checked />
+      </label>
 
-    <label class="tiny">LP (Hz)
-      <input id="lpHz" type="number" min="10" step="1" value="4000" />
-    </label>
+      <label class="control">Thresh (dB)
+        <input id="expThresh" type="number" step="1" value="-45" />
+      </label>
 
-    <label class="tiny">Expander
-      <input id="expOn" type="checkbox" checked />
-    </label>
+      <label class="control">Ratio
+        <input id="expRatio" type="number" step="0.1" value="3.0" />
+      </label>
 
-    <label class="tiny">Thresh (dB)
-      <input id="expThresh" type="number" step="1" value="-45" />
-    </label>
+      <label class="control">Attack (ms)
+        <input id="expAtk" type="number" step="1" value="10" />
+      </label>
 
-    <label class="tiny">Ratio
-      <input id="expRatio" type="number" step="0.1" value="3.0" />
-    </label>
+      <label class="control">Release (ms)
+        <input id="expRel" type="number" step="1" value="200" />
+      </label>
+    </div>
 
-    <label class="tiny">Attack (ms)
-      <input id="expAtk" type="number" step="1" value="10" />
-    </label>
+    <div class="group">
+      <div class="group-title">Output</div>
+      <label class="control">
+        <input id="logScale" type="checkbox" checked />
+        Log
+      </label>
 
-    <label class="tiny">Release (ms)
-      <input id="expRel" type="number" step="1" value="200" />
-    </label>
+      <label class="control">Waterfall (s)
+        <input id="wfSeconds" type="number" min="5" step="1" value="60" />
+      </label>
 
-    <label class="tiny">Audio out
-      <input id="audioOut" type="checkbox" />
-    </label>
+      <label class="control">Audio out
+        <input id="audioOut" type="checkbox" />
+      </label>
 
-    <button id="btnSave">Save</button>
-    <button id="btnReset">Reset</button>
-
-    <div class="spacer"></div>
-    <div class="tiny" id="status">Status: idle</div>
+      <div class="row">
+        <button id="btnSave">Save</button>
+        <button id="btnReset">Reset</button>
+      </div>
+    </div>
   </header>
 
   <main>
+    <!-- Spectrum canvas -->
     <div class="card">
       <h2>Spectrum</h2>
       <canvas id="spec" width="1200" height="260"></canvas>
       <div class="hint tiny">Cursor ist im Spectrum eingeblendet. Log/Range gilt fuer Spectrum und Waterfall gleich.</div>
     </div>
 
+    <!-- Waterfall canvas -->
     <div class="card">
       <h2>Waterfall</h2>
       <canvas id="wf" width="1200" height="520"></canvas>
     </div>
   </main>
 
+  <!-- Main application entry -->
   <script type="module" src="./app.js"></script>
 </body>
 </html>

@@ -4,13 +4,14 @@ Web UI zum Anzeigen eines Live-Audio-Spektrums und eines Waterfalls fuer einen g
 Die Anzeige laeuft komplett im Browser und nutzt WebAudio + AudioWorklet.
 
 ## Features
-- Live-Spectrum (linear oder log)
+- Live-Spectrum mit linearer Amplitudenskala
 - Waterfall mit frei waehlbarer Zeitachse
-- Anzeige-Autogain (nur Darstellung)
+- Anzeige-Autogain inkl. Live-Wert
 - Highpass/Lowpass Filter
 - Soft Expander (AudioWorklet)
 - Settings speichern (Cookie)
 - Optionaler Audio-Output
+- einklappbare Controls (3x2 Grid)
 
 ## Voraussetzungen
 - go2rtc mit WebRTC-Audio-Source
@@ -47,6 +48,7 @@ npx serve .
 - WebSocket-Verbindung: `ws(s)://<go2rtc-host>/api/ws?src=<name>`
 - Bei Problemen mit AudioContext: Seite einmal anklicken (Browser-Autoplay-Policy).
 - Waterfall und Spectrum verwenden denselben Frequenzbereich.
+- Noise-Floor-Subtraktion ist standardmaessig aus (konstante Toene bleiben sichtbar).
 
 ## Struktur
 - `src/index.html`: UI

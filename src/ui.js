@@ -10,6 +10,7 @@ export class UI {
 
     // Padding used by DSP to layout axes and labels.
     this.PAD = { top:24, bottom:26, left:56, right:10 };
+    this.WF_HISTORY_MULT = 5;
 
     // Bind DOM elements by ID.
     const $ = (id) => document.getElementById(id);
@@ -51,6 +52,7 @@ export class UI {
       audioOut: $("audioOut"),
 
       spec: $("spec"),
+      wfWrap: $("wfWrap"),
       wf: $("wf"),
     };
 
@@ -138,6 +140,10 @@ export class UI {
     this.el.autoGainVal.textContent = Number(v).toFixed(2);
   }
 
+  getWaterfallViewHeight() {
+    return this.wfViewHeight || this.el.wf.height;
+  }
+
   toggleControls() {
     document.body.classList.toggle("controls-collapsed");
     const isCollapsed = document.body.classList.contains("controls-collapsed");
@@ -150,7 +156,10 @@ export class UI {
     this.el.spec.width = w;
     this.el.wf.width = w;
     this.el.spec.height = 260;
-    this.el.wf.height = Math.max(360, Math.floor((window.innerHeight - 420)));
+    this.wfViewHeight = Math.max(360, Math.floor((window.innerHeight - 420)));
+    const historyH = Math.min(this.wfViewHeight * this.WF_HISTORY_MULT, 5000);
+    if (this.el.wfWrap) this.el.wfWrap.style.height = `${this.wfViewHeight}px`;
+    this.el.wf.height = historyH;
   }
 
   getSettings() {

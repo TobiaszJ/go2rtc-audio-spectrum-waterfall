@@ -110,6 +110,10 @@ main { padding:10px; display:grid; gap:10px; }
 .card h2 { margin:0; padding:10px 12px; font-size:14px; font-weight:600; border-bottom:1px solid var(--line); color: var(--muted); }
 canvas { display:block; width:100%; height:auto; }
 .hint { padding:10px 12px; font-size:13px; color:#b9c7dd; }
+.wf-wrap {
+  max-height: 520px;
+  overflow-y: auto;
+}
 
 /* Utility styles */
 .tiny { font-size:12px; opacity:.85; }

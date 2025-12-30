@@ -123,13 +123,13 @@
     <div class="card">
       <h2>Spectrum</h2>
       <canvas id="spec" width="1200" height="260"></canvas>
-      <div class="hint tiny">Cursor ist im Spectrum eingeblendet. Log/Range gilt fuer Spectrum und Waterfall gleich.</div>
     </div>
 
     <!-- Waterfall canvas -->
     <div class="card">
-      <h2>Waterfall</h2>
-      <canvas id="wf" width="1200" height="520"></canvas>
+      <div id="wfWrap" class="wf-wrap">
+        <canvas id="wf" width="1200" height="520"></canvas>
+      </div>
     </div>
   </main>
 

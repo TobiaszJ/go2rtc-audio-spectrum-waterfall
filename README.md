@@ -7,6 +7,7 @@ Die Anzeige laeuft komplett im Browser und nutzt WebAudio + AudioWorklet.
 - Live-Spectrum mit linearer Amplitudenskala
 - Waterfall mit frei waehlbarer Zeitachse
 - Anzeige-Autogain inkl. Live-Wert
+- Scrollbares Waterfall-Archiv (Rueckblick)
 - Highpass/Lowpass Filter
 - Soft Expander (AudioWorklet)
 - Settings speichern (Cookie)
@@ -40,6 +41,7 @@ npx serve .
 - Gain/AutoGain: Darstellungsskalierung (kein Einfluss aufs Audio)
 - Fmin/Fmax + Log: Frequenzbereich fuer Spectrum und Waterfall
 - Waterfall (s): Zeitdauer, die in der Hoehe des Waterfalls sichtbar ist
+- Waterfall ist scrollbar; aeltere Daten liegen unterhalb der aktuellen Zeile.
 - HP/LP: Biquad Highpass/Lowpass
 - Expander: Soft Expander (Threshold, Ratio, Attack/Release)
 - Audio out: Ausgabe des Streams auf die lokalen Lautsprecher
@@ -49,6 +51,7 @@ npx serve .
 - Bei Problemen mit AudioContext: Seite einmal anklicken (Browser-Autoplay-Policy).
 - Waterfall und Spectrum verwenden denselben Frequenzbereich.
 - Noise-Floor-Subtraktion ist standardmaessig aus (konstante Toene bleiben sichtbar).
+- Waterfall-Historie ist standardmaessig 5x die sichtbare Hoehe (max. 5000px).
 
 ## Struktur
 - `src/index.html`: UI

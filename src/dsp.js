@@ -398,6 +398,8 @@ export class DSP {
 
     const plotX = r.pad.left;
     const plotW = w - r.pad.left - r.pad.right;
+    const wrap = this.ui.el.wfWrap;
+    const stickToTop = wrap ? wrap.scrollTop <= 2 : false;
 
     // Side areas (pad)
     g.fillStyle = "#0b0f14";
@@ -417,6 +419,7 @@ export class DSP {
       row.data[o]=rr; row.data[o+1]=gg; row.data[o+2]=bb; row.data[o+3]=255;
     }
     g.putImageData(row, plotX, 0);
+    if (stickToTop && wrap) wrap.scrollTop = 0;
   }
 
   tick(ts) {
@@ -431,7 +434,8 @@ export class DSP {
     // Waterfall updates at a fixed rate based on target seconds.
     const r = this.getRange();
     const wfSeconds = Math.max(5, r.wfSeconds || 60);
-    const intervalMs = (wfSeconds * 1000) / this.wf.height;
+    const viewH = this.ui.getWaterfallViewHeight();
+    const intervalMs = (wfSeconds * 1000) / viewH;
 
     if (!this.lastWfTime) this.lastWfTime = ts;
     if ((ts - this.lastWfTime) >= intervalMs) {

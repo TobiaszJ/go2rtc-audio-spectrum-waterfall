@@ -3,6 +3,9 @@
 Web UI zum Anzeigen eines Live-Audio-Spektrums und eines Waterfalls fuer einen go2rtc WebRTC-Audio-Stream.
 Die Anzeige laeuft komplett im Browser und nutzt WebAudio + AudioWorklet.
 
+## Management Summary
+Dieses Projekt macht Audio von go2rtc sichtbar: Das Spektrum zeigt, welche Frequenzen gerade im Signal stecken, und der Waterfall zeigt deren Verlauf ueber die Zeit. Dadurch lassen sich wiederkehrende Toene und Maschinenlaeufe schnell erkennen. Ein Beispiel ist die Kompressordrehzahl (Umdrehungen pro Sekunde = Hz), die als Markerlinie im Spektrum/Waterfall eingezeichnet wird. Harmonische Schwingungen (Vielfache einer Grundfrequenz, z. B. 2x, 3x) erscheinen als weitere Linien und helfen, mechanische Ursachen oder Resonanzen zu identifizieren. Zusaetzlich kann eine zweite Kennzahl (z. B. Luefterdrehzahl) parallel markiert werden. Damit wird aus reinen Audiodaten ein klarer, technischer Zusammenhang zwischen Geraeusch, Frequenz und Maschinenzustand.
+
 ## Features
 - Live-Spectrum mit linearer Amplitudenskala
 - Waterfall mit frei waehlbarer Zeitachse
@@ -13,6 +16,7 @@ Die Anzeige laeuft komplett im Browser und nutzt WebAudio + AudioWorklet.
 - Settings speichern (Cookie)
 - Optionaler Audio-Output
 - einklappbare Controls (3x2 Grid)
+- MQTT Markerlinie (z. B. ebusd RunDataCompressorSpeed)
 
 ## Voraussetzungen
 - go2rtc mit WebRTC-Audio-Source
@@ -52,6 +56,7 @@ npx serve .
 - Waterfall und Spectrum verwenden denselben Frequenzbereich.
 - Noise-Floor-Subtraktion ist standardmaessig aus (konstante Toene bleiben sichtbar).
 - Waterfall-Historie ist standardmaessig 5x die sichtbare Hoehe (max. 5000px).
+- MQTT im Browser benoetigt MQTT over WebSocket (z. B. `ws://<broker>:1884`).
 
 ## Struktur
 - `src/index.html`: UI

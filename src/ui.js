@@ -50,6 +50,14 @@ export class UI {
       expRel: $("expRel"),
 
       audioOut: $("audioOut"),
+      mqttStatus: $("mqttStatus"),
+      mqttValue: $("mqttValue"),
+      mqttFanValue: $("mqttFanValue"),
+      mqttTopic: $("mqttTopic"),
+      mqttFanTopic: $("mqttFanTopic"),
+      mqttPoll: $("mqttPoll"),
+      mqttColor: $("mqttColor"),
+      mqttHarmonics: $("mqttHarmonics"),
 
       spec: $("spec"),
       wfWrap: $("wfWrap"),
@@ -93,7 +101,8 @@ export class UI {
       this.el.fMin, this.el.fMax, this.el.logScale, this.el.wfSeconds,
       this.el.hpHz, this.el.lpHz,
       this.el.expOn, this.el.expThresh, this.el.expRatio, this.el.expAtk, this.el.expRel,
-      this.el.audioOut
+      this.el.audioOut,
+      this.el.mqttPoll, this.el.mqttColor, this.el.mqttHarmonics
     ].forEach((x) => x.addEventListener("input", onChange));
 
     // Save settings to cookie.
@@ -118,6 +127,11 @@ export class UI {
   onAnySettingChange(fn) { this.handlers.change = fn; }
 
   setStatus(s) { this.el.status.textContent = "Status: " + s; }
+  setMqttStatus(s) { if (this.el.mqttStatus) this.el.mqttStatus.textContent = s; }
+  setMqttValue(v) { if (this.el.mqttValue) this.el.mqttValue.textContent = v; }
+  setMqttTopic(t) { if (this.el.mqttTopic) this.el.mqttTopic.textContent = t; }
+  setMqttFanValue(v) { if (this.el.mqttFanValue) this.el.mqttFanValue.textContent = v; }
+  setMqttFanTopic(t) { if (this.el.mqttFanTopic) this.el.mqttFanTopic.textContent = t; }
   setRunning(running) {
     this.el.btnStart.disabled = running;
     this.el.btnStop.disabled = !running;
@@ -156,9 +170,9 @@ export class UI {
     this.el.spec.width = w;
     this.el.wf.width = w;
     this.el.spec.height = 260;
-    this.wfViewHeight = Math.max(360, Math.floor((window.innerHeight - 420)));
+    const wrapH = this.el.wfWrap ? this.el.wfWrap.clientHeight : 0;
+    this.wfViewHeight = Math.max(260, wrapH || Math.floor(window.innerHeight - 420));
     const historyH = Math.min(this.wfViewHeight * this.WF_HISTORY_MULT, 5000);
-    if (this.el.wfWrap) this.el.wfWrap.style.height = `${this.wfViewHeight}px`;
     this.el.wf.height = historyH;
   }
 
@@ -186,6 +200,9 @@ export class UI {
       expReleaseMs: parseFloat(this.el.expRel.value),
 
       audioOut: !!this.el.audioOut.checked,
+      mqttPollSec: parseInt(this.el.mqttPoll?.value || "1", 10),
+      markerColor: this.el.mqttColor?.value || "#f6b21a",
+      markerHarmonics: !!this.el.mqttHarmonics?.checked,
     };
   }
 

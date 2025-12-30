@@ -34,6 +34,15 @@ export class DSP {
     this.AUTO_TARGET = 190;
     this.AUTO_SMOOTH = 0.03;
 
+    // External marker frequency (Hz) for overlay.
+    this.markerHz = null;
+    this.markerFanHz = null;
+    this.markerColor = "#f6b21a";
+    this.markerFanColor = "#3bd4ff";
+    this.markerHarmonics = true;
+    this.markerHarmonicsMax = 8;
+    this.avgLine = null;
+
     // Canvas setup
     this.spec = ui.el.spec;
     this.wf = ui.el.wf;
@@ -120,6 +129,76 @@ export class DSP {
     const maxDb = this.analyser ? this.analyser.maxDecibels : -30;
     const db = minDb + (vByte / 255) * (maxDb - minDb);
     return Math.pow(10, (db - maxDb) / 20);
+  }
+
+  setMarkerHz(hz) {
+    this.markerHz = Number.isFinite(hz) ? hz : null;
+  }
+
+  setMarkerFanHz(hz) {
+    this.markerFanHz = Number.isFinite(hz) ? hz : null;
+  }
+
+  setMarkerOptions(opts) {
+    if (opts?.color) this.markerColor = opts.color;
+    if (typeof opts?.harmonics === "boolean") this.markerHarmonics = opts.harmonics;
+  }
+
+  hexToRgb(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+    if (!m) return [246, 178, 26];
+    const n = parseInt(m[1], 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+
+  markerFreqs(r, baseHz) {
+    if (baseHz === null || !Number.isFinite(baseHz)) return [];
+    const freqs = [baseHz];
+    if (this.markerHarmonics) {
+      for (let i = 2; i <= this.markerHarmonicsMax; i++) {
+        const f = baseHz * i;
+        if (f > r.fMax) break;
+        freqs.push(f);
+      }
+    }
+    return freqs;
+  }
+
+  updateAvgLine(line) {
+    if (!this.avgLine || this.avgLine.length !== line.length) {
+      this.avgLine = new Float32Array(line.length);
+      for (let i = 0; i < line.length; i++) this.avgLine[i] = line[i];
+      return;
+    }
+    const alpha = 0.02;
+    for (let i = 0; i < line.length; i++) {
+      this.avgLine[i] = this.avgLine[i] + (line[i] - this.avgLine[i]) * alpha;
+    }
+  }
+
+  findTopPeaks(plotW, r) {
+    if (!this.avgLine) return [];
+    const peaks = [];
+    const minSep = 12;
+    const minAmp = 18;
+    for (let i = 2; i < this.avgLine.length - 2; i++) {
+      const v = this.avgLine[i];
+      if (v < minAmp) continue;
+      if (v > this.avgLine[i - 1] && v >= this.avgLine[i + 1]) {
+        peaks.push({ i, v });
+      }
+    }
+    peaks.sort((a, b) => b.v - a.v);
+    const selected = [];
+    for (let i = 0; i < peaks.length && selected.length < 5; i++) {
+      const p = peaks[i];
+      if (selected.every((s) => Math.abs(s.i - p.i) >= minSep)) selected.push(p);
+    }
+    selected.sort((a, b) => a.i - b.i);
+    return selected.map((p) => {
+      const f = this.xNormToF(p.i / plotW);
+      return { i: p.i, f };
+    });
   }
 
   async start() {
@@ -367,6 +446,26 @@ export class DSP {
     g.strokeStyle = "#2b3a52";
     g.strokeRect(r.pad.left, r.pad.top, plotW, plotH);
 
+    // Marker line (e.g. compressor speed) + optional harmonics.
+    const drawMarker = (freqs, color) => {
+      if (!freqs.length) return;
+      g.save();
+      g.strokeStyle = color;
+      for (let i = 0; i < freqs.length; i++) {
+        const f = freqs[i];
+        if (f < r.fMin || f > r.fMax) continue;
+        g.globalAlpha = i === 0 ? 0.9 : 0.35;
+        const mx = r.pad.left + this.fToXNorm(f) * plotW;
+        g.beginPath();
+        g.moveTo(mx, r.pad.top);
+        g.lineTo(mx, r.pad.top + plotH);
+        g.stroke();
+      }
+      g.restore();
+    };
+    drawMarker(this.markerFreqs(r, this.markerHz), this.markerColor);
+    drawMarker(this.markerFreqs(r, this.markerFanHz), this.markerFanColor);
+
     // Spectrum line
     g.strokeStyle = "#e8eef7";
     g.beginPath();
@@ -378,6 +477,18 @@ export class DSP {
       if (px===0) g.moveTo(x,y); else g.lineTo(x,y);
     }
     g.stroke();
+
+    // Stable peak labels (EMA over time).
+    this.updateAvgLine(line);
+    const peaks = this.findTopPeaks(plotW, r);
+    g.fillStyle = "#c8d4ea";
+    for (let p = 0; p < peaks.length; p++) {
+      const { i, f } = peaks[p];
+      const x = r.pad.left + i;
+      const y = r.pad.top + 12 + p * 12;
+      const label = f >= 1000 ? `${(f/1000).toFixed(2)}k` : `${f.toFixed(1)}`;
+      g.fillText(label, x + 4, y);
+    }
 
     // Cursor overlay inside plot
     if (this.cursorX !== null) {
@@ -418,6 +529,25 @@ export class DSP {
       const o = px*4;
       row.data[o]=rr; row.data[o+1]=gg; row.data[o+2]=bb; row.data[o+3]=255;
     }
+
+    // Overlay marker pixel at the current row (with harmonics if enabled).
+    const drawMarkerRow = (freqs, color) => {
+      if (!freqs.length) return;
+      const [mr, mg, mb] = this.hexToRgb(color);
+      for (let i = 0; i < freqs.length; i++) {
+        const f = freqs[i];
+        if (f < r.fMin || f > r.fMax) continue;
+        const mx = Math.round(this.fToXNorm(f) * (plotW - 1));
+        const o = mx * 4;
+        const scale = i === 0 ? 1 : 0.6;
+        row.data[o] = Math.round(mr * scale);
+        row.data[o+1] = Math.round(mg * scale);
+        row.data[o+2] = Math.round(mb * scale);
+        row.data[o+3] = 255;
+      }
+    };
+    drawMarkerRow(this.markerFreqs(r, this.markerHz), this.markerColor);
+    drawMarkerRow(this.markerFreqs(r, this.markerFanHz), this.markerFanColor);
     g.putImageData(row, plotX, 0);
     if (stickToTop && wrap) wrap.scrollTop = 0;
   }

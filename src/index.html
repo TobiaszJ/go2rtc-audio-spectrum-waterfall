@@ -52,7 +52,7 @@
     </div>
 
     <div class="group">
-      <div class="group-title">Range</div>
+      <div class="group-title">Range + Filters</div>
       <label class="control">Fmin (Hz)
         <input id="fMin" type="number" min="0" step="1" value="10" />
       </label>
@@ -60,10 +60,7 @@
       <label class="control">Fmax (Hz)
         <input id="fMax" type="number" min="1" step="1" value="4000" />
       </label>
-    </div>
 
-    <div class="group">
-      <div class="group-title">Filters</div>
       <label class="control">HP (Hz)
         <input id="hpHz" type="number" min="0" step="1" value="80" />
       </label>
@@ -116,6 +113,24 @@
         <button id="btnReset">Reset</button>
       </div>
     </div>
+
+    <div class="group">
+      <div class="group-title">MQTT</div>
+      <div class="pill">Status: <b id="mqttStatus">-</b></div>
+      <div class="pill">Compressor Hz: <b id="mqttValue">-</b></div>
+      <div class="pill">Fan Hz: <b id="mqttFanValue">-</b></div>
+      <div class="tiny">Topic: <span id="mqttTopic">-</span></div>
+      <div class="tiny">Fan Topic: <span id="mqttFanTopic">-</span></div>
+      <label class="control">Polling (s)
+        <input id="mqttPoll" type="number" min="1" max="60" step="1" value="1" />
+      </label>
+      <label class="control">Marker color
+        <input id="mqttColor" type="color" value="#f6b21a" />
+      </label>
+      <label class="control">Harmonics
+        <input id="mqttHarmonics" type="checkbox" checked />
+      </label>
+    </div>
   </header>
 
   <main>
@@ -126,13 +141,15 @@
     </div>
 
     <!-- Waterfall canvas -->
-    <div class="card">
+    <div class="card waterfall">
       <div id="wfWrap" class="wf-wrap">
         <canvas id="wf" width="1200" height="520"></canvas>
       </div>
     </div>
   </main>
 
+  <!-- MQTT client (global window.mqtt) -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <!-- Main application entry -->
   <script type="module" src="./app.js"></script>
 </body>

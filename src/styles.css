@@ -9,11 +9,17 @@
   --text: #e8eef7;
   --muted: #b9c7dd;
 }
+html, body {
+  height: 100%;
+}
 body {
   margin:0;
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
   background: var(--bg);
   color: var(--text);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Header controls */
@@ -105,15 +111,29 @@ body.controls-collapsed header {
 }
 
 /* Main layout */
-main { padding:10px; display:grid; gap:10px; }
+main {
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  flex: 1;
+  min-height: 0;
+}
+.card.waterfall {
+  flex: 1;
+  min-height: 0;
+  display:flex;
+  flex-direction:column;
+}
+.card.waterfall .wf-wrap {
+  flex: 1;
+  min-height: 0;
+}
 .card { background: var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
 .card h2 { margin:0; padding:10px 12px; font-size:14px; font-weight:600; border-bottom:1px solid var(--line); color: var(--muted); }
 canvas { display:block; width:100%; height:auto; }
 .hint { padding:10px 12px; font-size:13px; color:#b9c7dd; }
-.wf-wrap {
-  max-height: 520px;
-  overflow-y: auto;
-}
+.wf-wrap { overflow-y: auto; }
 
 /* Utility styles */
 .tiny { font-size:12px; opacity:.85; }

@@ -45,7 +45,6 @@ header {
 }
 .btn-toggle {
   font-size:12px;
-  padding:6px 10px;
 }
 .group {
   background: var(--panel);
@@ -56,11 +55,40 @@ header {
   flex-direction:column;
   gap:8px;
 }
+.group-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
 .group-title {
   font-size:12px;
   letter-spacing:0.08em;
   text-transform:uppercase;
   color: var(--muted);
+}
+.group-actions {
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.group-body {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.group.is-collapsed .group-body {
+  display:none;
+}
+.group.is-collapsed .group-toggle .icon {
+  transform: rotate(-90deg);
+}
+.group.is-dragging {
+  opacity:0.6;
+}
+.group.is-drop-target {
+  outline:1px dashed var(--line-2);
+  outline-offset:2px;
 }
 .row {
   display:flex;
@@ -83,8 +111,37 @@ button, select, input, label {
   padding:8px 10px;
   font-size:13px;
 }
+button.icon-btn {
+  padding:0;
+  width:30px;
+  height:30px;
+  border-radius:9px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+button.icon-btn .icon {
+  width:16px;
+  height:16px;
+  fill: currentColor;
+  transition: transform 0.18s ease;
+  transform-origin: 50% 50%;
+}
+button.icon-btn .icon circle {
+  fill: currentColor;
+}
+button.icon-btn .icon path {
+  stroke: currentColor;
+}
+button.group-drag { cursor: grab; }
+button.group-drag:active { cursor: grabbing; }
+.controls-collapsed #btnToggleControls .icon-toggle {
+  transform: rotate(180deg);
+}
+label span { pointer-events: none; }
 button { cursor:pointer; }
 button:hover { border-color: var(--line-2); }
+.is-hidden { display: none !important; }
 .control {
   display:flex;
   gap:8px;
@@ -102,7 +159,6 @@ body.controls-collapsed header .group {
 body.controls-collapsed header {
   padding-bottom:6px;
 }
-
 @media (max-width: 980px) {
   header { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
 }
@@ -133,8 +189,50 @@ main {
 .card h2 { margin:0; padding:10px 12px; font-size:14px; font-weight:600; border-bottom:1px solid var(--line); color: var(--muted); }
 canvas { display:block; width:100%; height:auto; }
 .hint { padding:10px 12px; font-size:13px; color:#b9c7dd; }
-.wf-wrap { overflow-y: auto; }
+.wf-wrap { overflow-y: auto; position: relative; }
+#wfCursor { position: absolute; inset: 0; pointer-events: none; }
 
 /* Utility styles */
 .tiny { font-size:12px; opacity:.85; }
 .value { font-variant-numeric: tabular-nums; opacity:.9; }
+
+/* File mode */
+body.mode-live .file-card { display: none; }
+body.mode-live #wfCursor { display: none; }
+body.mode-file .file-card { display: flex; flex-direction: column; gap: 8px; }
+body.mode-file .wf-wrap { overflow: hidden; }
+body.mode-file #wf,
+body.mode-file #wfCursor {
+  height: 100%;
+}
+.file-card { padding-bottom: 10px; }
+.file-controls .row { padding: 0 10px; }
+.file-controls { display: flex; flex-direction: column; gap: 8px; }
+.file-controls .control { flex: 1 1 180px; }
+.file-controls .control.file-input { flex: 2 1 320px; }
+.file-controls .control input[type="file"] { flex: 1 1 auto; min-width: 220px; }
+.file-controls .pill,
+.file-controls button { white-space: nowrap; }
+.scrub-controls { padding: 0 10px 10px; }
+.scrub-controls .row { align-items: center; gap: 10px; }
+.scrub-controls .control {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  padding: 6px 10px;
+}
+.scrub-controls .control input[type="range"] {
+  width: auto;
+  flex: 1 1 auto;
+}
+.scrub-controls .pill { white-space: nowrap; }
+.video-preview {
+  display: none;
+  width: calc(100% - 20px);
+  height: clamp(220px, 32vh, 360px);
+  margin: 0 10px 10px;
+  background: #000;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.video-preview.is-visible { display: block; }

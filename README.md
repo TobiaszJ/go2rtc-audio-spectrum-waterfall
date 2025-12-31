@@ -12,11 +12,15 @@ Dieses Projekt macht Audio von go2rtc sichtbar: Das Spektrum zeigt, welche Frequ
 - Anzeige-Autogain inkl. Live-Wert
 - Scrollbares Waterfall-Archiv (Rueckblick)
 - Highpass/Lowpass Filter
+- Filter-Overlay im Spectrum (HP/LP Bereiche)
 - Soft Expander (AudioWorklet)
 - Settings speichern (Cookie)
 - Optionaler Audio-Output
-- einklappbare Controls (3x2 Grid)
+- einklappbare Controls und frei sortierbare Gruppen (Drag+Drop)
 - MQTT Markerlinie (z. B. ebusd RunDataCompressorSpeed)
+- File-Mode mit Audio/Video-Upload, Scrub + Offline-Waterfall
+- Scrub-Audio-Preview und optionaler Video-Preview
+- Analysemodi: Fixed FFT, Multi FFT, CQT, Wavelet
 
 ## Voraussetzungen
 - go2rtc mit WebRTC-Audio-Source
@@ -38,9 +42,12 @@ npx serve .
 ```
 3) `src/index.html` im Browser oeffnen (z.B. `http://localhost:3000/src/index.html`).
 4) `Start` klicken.
+5) Optional: `Mode` auf `File` stellen und ein Audio/Video-File waehlen.
 
 ## Bedienung
-- FFT: Groesse der FFT
+- Mode (Analysis): Fixed FFT, Multi FFT, CQT, Wavelet
+- FFT: Groesse der FFT (nur Fixed FFT)
+- Precision: Genauigkeit fuer CQT/Wavelet (Low/Medium/High)
 - Smoothing: Glaettung der FFT-Frames
 - Gain/AutoGain: Darstellungsskalierung (kein Einfluss aufs Audio)
 - Fmin/Fmax + Log: Frequenzbereich fuer Spectrum und Waterfall
@@ -49,6 +56,7 @@ npx serve .
 - HP/LP: Biquad Highpass/Lowpass
 - Expander: Soft Expander (Threshold, Ratio, Attack/Release)
 - Audio out: Ausgabe des Streams auf die lokalen Lautsprecher
+- File Mode: Start/End Bereich setzen, Scrubben, optional Video-Preview, Ausfuehren fuer Offline-Waterfall
 
 ## Hinweise
 - WebSocket-Verbindung: `ws(s)://<go2rtc-host>/api/ws?src=<name>`
@@ -58,12 +66,16 @@ npx serve .
 - Waterfall-Historie ist standardmaessig 5x die sichtbare Hoehe (max. 5000px).
 - MQTT im Browser benoetigt MQTT over WebSocket (z. B. `ws://<broker>:1884`).
 
+## Dokumentation
+Vollstaendige Software-Dokumentation: `docs/SOFTWARE_DOCUMENTATION.md`.
+
 ## Struktur
 - `src/index.html`: UI
 - `src/app.js`: Config + Wiring
 - `src/dsp.js`: WebRTC/Audio/DSP + Rendering
 - `src/gate-worklet.js`: Soft Expander (AudioWorklet)
 - `src/ui.js`: UI-Logik und Settings
+- `docs/SOFTWARE_DOCUMENTATION.md`: Vollstaendige Doku
 
 ## Lizenz
 Siehe `LICENSE`.

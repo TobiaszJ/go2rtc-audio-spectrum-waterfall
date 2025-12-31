@@ -13,7 +13,7 @@
 \maketitle
 
 \begin{abstract}
-This paper describes a browser-based system for real-time acoustic spectrum and waterfall analysis of a heat pump installation. The system ingests RTSP audio from a nearby camera, converts it to WebRTC via go2rtc, and renders a live spectrum and waterfall view using the Web Audio API. Operational telemetry (compressor and fan speed in revolutions per second) is retrieved through Home Assistant and ebusd via MQTT over WebSocket and overlaid as marker lines, including optional harmonic multiples. The result is a practical tool to correlate audible vibration signatures with machine state and to support troubleshooting, tuning, and monitoring.
+This paper describes a browser-based system for real-time acoustic spectrum and waterfall analysis of a heat pump installation. The system ingests RTSP audio from a nearby camera, converts it to WebRTC via go2rtc, and renders a live spectrum and waterfall view using the Web Audio API. Operational telemetry (compressor and fan speed in revolutions per second) is retrieved through Home Assistant and ebusd via MQTT over WebSocket and overlaid as marker lines, including optional harmonic multiples. The tool also supports offline analysis of local audio/video files and provides multiple analysis modes (fixed FFT, multi-resolution FFT, constant-Q, and wavelet-style log-frequency analysis). The result is a practical workflow to correlate audible vibration signatures with machine state and to support troubleshooting, tuning, and monitoring.
 \end{abstract}
 
 \section{Introduction}
@@ -57,6 +57,12 @@ f_k = \frac{k}{N} \cdot f_s,
 \end{equation}
 where $f_s$ is the sample rate.
 
+\subsection{Multi-Resolution FFT}
+To increase low-frequency resolution without sacrificing high-frequency responsiveness, the system offers a multi-FFT mode. Multiple FFT sizes are computed over the same time-domain window and combined by frequency bands with a small overlap region. This produces sharper low-frequency detail while preserving adequate time resolution at higher frequencies.
+
+\subsection{Log-Frequency Analysis (CQT/Wavelet)}
+For log-frequency analysis, the system builds constant-Q or wavelet-style bins between $f_\mathrm{min}$ and $f_\mathrm{max}$. The constant-Q transform uses Hann windows with a fixed quality factor, while the wavelet mode uses Gaussian windows with a scaled Q to emphasize time localization. Precision presets change bins per octave and the maximum window length to balance detail and computational load.
+
 \subsection{Linear Amplitude Display}
 To maintain interpretability for non-technical users, the spectrum is displayed in linear amplitude rather than logarithmic dB scale. The Web Audio API provides FFT magnitudes mapped from dB to a byte range; these values are converted back to a normalized linear amplitude $A \in [0,1]$ based on \texttt{minDecibels} and \texttt{maxDecibels}. This avoids double-log compression and helps highlight tonal lines.
 
@@ -66,6 +72,9 @@ The waterfall is constructed by drawing one spectrum line per time step into a s
 \Delta t = \frac{T}{H},
 \end{equation}
 where $H$ is the visible waterfall height. A larger history buffer allows the user to scroll into the past within the waterfall panel without affecting the page layout.
+
+\subsection{Offline File Mode}
+In file mode, the user selects a local audio or video file and defines a start/end range. The system decodes the file to an \texttt{AudioBuffer} and supports scrubbing for instant spectrum updates. A full-file waterfall is rendered offline and compressed to the visible height, with a cursor line showing the current scrub position. For video files, a preview element is synchronized with scrubbing, and a short audio preview is played during scrub actions to provide immediate feedback.
 
 \section{Marker Overlay and Harmonics}
 Telemetry values in RPS map directly to a fundamental frequency $f_0$ in Hz. The system overlays a vertical marker line at $f_0$ and, optionally, at harmonic frequencies:
@@ -84,9 +93,10 @@ To highlight persistent tonal components, the system maintains an exponential mo
 with $\alpha$ set to a small value for stability. Local maxima above a minimum amplitude are extracted and the top five peaks are labeled directly in the spectrum. This helps identify dominant frequencies that remain over time, distinguishing them from transient noise.
 
 \section{User Interaction and Controls}
-The interface is organized into six main control groups (analysis, range and filters, expander, output, MQTT, and source). Key parameters include:
+The interface is organized into six main control groups (analysis, range and filters, expander, output, MQTT, and source). Groups can be collapsed and reordered via drag-and-drop to prioritize the most relevant controls. Key parameters include:
 \begin{itemize}
   \item FFT size and smoothing for resolution and stability
+  \item Analysis mode (fixed, multi-FFT, CQT, wavelet)
   \item Gain and AutoGain for display scaling
   \item Frequency range limits and optional logarithmic x-axis
   \item Highpass/Lowpass filters to isolate frequency bands
@@ -108,6 +118,7 @@ Several limitations are inherent to the setup:
   \item Environmental noise may mask low-amplitude tones.
   \item The mapping from rotational speed to acoustic frequency assumes a dominant tonal component; some systems emit multiple coupled modes.
   \item Browser-based FFT resolution is limited by available CPU and latency constraints.
+  \item Log-frequency analysis (CQT/Wavelet) and long offline renders are CPU intensive for large files.
 \end{itemize}
 
 \section{Future Work}

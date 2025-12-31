@@ -1,9 +1,23 @@
 export class UI {
   constructor(config) {
     this.config = config;
+    this.defaults = {
+      go2rtcHost: config.go2rtcHost || "",
+      src: config.src || "",
+      mqtt: {
+        url: config.mqtt?.url || "",
+        username: config.mqtt?.username || "",
+        password: config.mqtt?.password || "",
+        topic: config.mqtt?.topic || "",
+        requestTopic: config.mqtt?.requestTopic || "",
+        fanTopic: config.mqtt?.fanTopic || "",
+        fanRequestTopic: config.mqtt?.fanRequestTopic || "",
+      },
+    };
     this.cookieKey = "webrtc_fft_wf_settings_v3";
     this.layoutKey = "webrtc_fft_wf_layout_v1";
     this.dragGroupId = null;
+    this.dragGroupContainer = null;
     this.handlers = {
       start: () => {},
       stop: () => {},
@@ -26,8 +40,8 @@ export class UI {
     const $ = (id) => document.getElementById(id);
 
     this.el = {
-      hostLabel: $("hostLabel"),
-      srcLabel: $("srcLabel"),
+      hostInput: $("hostInput"),
+      srcInput: $("srcInput"),
       fsLabel: $("fsLabel"),
       nyqLabel: $("nyqLabel"),
       status: $("status"),
@@ -70,8 +84,15 @@ export class UI {
       mqttStatus: $("mqttStatus"),
       mqttValue: $("mqttValue"),
       mqttFanValue: $("mqttFanValue"),
-      mqttTopic: $("mqttTopic"),
-      mqttFanTopic: $("mqttFanTopic"),
+      mqttTopicLabel: $("mqttTopicLabel"),
+      mqttFanTopicLabel: $("mqttFanTopicLabel"),
+      mqttUrlInput: $("mqttUrlInput"),
+      mqttUserInput: $("mqttUserInput"),
+      mqttPassInput: $("mqttPassInput"),
+      mqttTopicInput: $("mqttTopicInput"),
+      mqttRequestTopicInput: $("mqttRequestTopicInput"),
+      mqttFanTopicInput: $("mqttFanTopicInput"),
+      mqttFanRequestTopicInput: $("mqttFanRequestTopicInput"),
       mqttPollEnabled: $("mqttPollEnabled"),
       mqttPoll: $("mqttPoll"),
       mqttColor: $("mqttColor"),
@@ -91,17 +112,26 @@ export class UI {
       fileTime: $("fileTime"),
       fileDuration: $("fileDuration"),
       fileRangeLabel: $("fileRangeLabel"),
+      fileName: $("fileName"),
       btnProcess: $("btnProcess"),
       videoToggle: $("videoToggle"),
       videoPreview: $("videoPreview"),
     };
 
-    this.groupContainer = document.querySelector("header");
+    this.groupContainers = Array.from(document.querySelectorAll(".groups-grid"));
     this.groups = Array.from(document.querySelectorAll(".group[data-group]"));
 
     // Show config in the header.
-    this.el.hostLabel.textContent = config.go2rtcHost;
-    this.el.srcLabel.textContent = config.src;
+    if (this.el.hostInput) this.el.hostInput.value = config.go2rtcHost || "";
+    if (this.el.srcInput) this.el.srcInput.value = config.src || "";
+    const mqtt = config.mqtt || {};
+    if (this.el.mqttUrlInput) this.el.mqttUrlInput.value = mqtt.url || "";
+    if (this.el.mqttUserInput) this.el.mqttUserInput.value = mqtt.username || "";
+    if (this.el.mqttPassInput) this.el.mqttPassInput.value = mqtt.password || "";
+    if (this.el.mqttTopicInput) this.el.mqttTopicInput.value = mqtt.topic || "";
+    if (this.el.mqttRequestTopicInput) this.el.mqttRequestTopicInput.value = mqtt.requestTopic || "";
+    if (this.el.mqttFanTopicInput) this.el.mqttFanTopicInput.value = mqtt.fanTopic || "";
+    if (this.el.mqttFanRequestTopicInput) this.el.mqttFanRequestTopicInput.value = mqtt.fanRequestTopic || "";
 
     // Cursor tracking (used for spectrum overlay).
     this.cursorHz = null;
@@ -142,7 +172,14 @@ export class UI {
       this.el.audioOut,
       this.el.mqttPollEnabled, this.el.mqttPoll, this.el.mqttColor, this.el.mqttFanColor, this.el.mqttHarmonics,
       this.el.videoToggle
-    ].forEach((x) => x.addEventListener("input", onChange));
+    ].filter(Boolean).forEach((x) => x.addEventListener("input", onChange));
+
+    [
+      this.el.hostInput, this.el.srcInput,
+      this.el.mqttUrlInput, this.el.mqttUserInput, this.el.mqttPassInput,
+      this.el.mqttTopicInput, this.el.mqttRequestTopicInput,
+      this.el.mqttFanTopicInput, this.el.mqttFanRequestTopicInput
+    ].filter(Boolean).forEach((x) => x.addEventListener("change", onChange));
 
     if (this.el.sourceMode) {
       this.el.sourceMode.addEventListener("change", () => {
@@ -217,9 +254,9 @@ export class UI {
   setStatus(s) { this.el.status.textContent = "Status: " + s; }
   setMqttStatus(s) { if (this.el.mqttStatus) this.el.mqttStatus.textContent = s; }
   setMqttValue(v) { if (this.el.mqttValue) this.el.mqttValue.textContent = v; }
-  setMqttTopic(t) { if (this.el.mqttTopic) this.el.mqttTopic.textContent = t; }
+  setMqttTopic(t) { if (this.el.mqttTopicLabel) this.el.mqttTopicLabel.textContent = t; }
   setMqttFanValue(v) { if (this.el.mqttFanValue) this.el.mqttFanValue.textContent = v; }
-  setMqttFanTopic(t) { if (this.el.mqttFanTopic) this.el.mqttFanTopic.textContent = t; }
+  setMqttFanTopic(t) { if (this.el.mqttFanTopicLabel) this.el.mqttFanTopicLabel.textContent = t; }
   setRunning(running) {
     this.el.btnStart.disabled = running;
     this.el.btnStop.disabled = !running;
@@ -271,10 +308,19 @@ export class UI {
     if (this.el.videoToggle) this.el.videoToggle.disabled = !enabled;
   }
 
+  setFileInputEnabled(enabled) {
+    if (this.el.fileInput) this.el.fileInput.disabled = !enabled;
+  }
+
   setFileDuration(seconds) {
     if (!this.el.fileDuration) return;
     if (!Number.isFinite(seconds)) this.el.fileDuration.textContent = "-";
     else this.el.fileDuration.textContent = seconds.toFixed(2) + " s";
+  }
+
+  setFileName(name) {
+    if (!this.el.fileName) return;
+    this.el.fileName.textContent = name || "-";
   }
 
   setFileRangeLabel(startSec, endSec) {
@@ -353,8 +399,9 @@ export class UI {
   }
 
   initGroupLayout() {
+    this.groupContainers = Array.from(document.querySelectorAll(".groups-grid"));
     this.groups = Array.from(document.querySelectorAll(".group[data-group]"));
-    if (!this.groupContainer || !this.groups.length) return;
+    if (!this.groupContainers.length || !this.groups.length) return;
     this.groups.forEach((group) => {
       const id = group.dataset.group;
       const toggleBtn = group.querySelector(".group-toggle");
@@ -376,6 +423,7 @@ export class UI {
   onGroupDragStart(e, id) {
     this.dragGroupId = id;
     const group = this.getGroupById(id);
+    this.dragGroupContainer = group ? group.parentElement : null;
     if (group) group.classList.add("is-dragging");
     if (e.dataTransfer) {
       e.dataTransfer.effectAllowed = "move";
@@ -391,6 +439,7 @@ export class UI {
       delete g.dataset.dropAfter;
     });
     this.dragGroupId = null;
+    this.dragGroupContainer = null;
   }
 
   onGroupDragOver(e, id) {
@@ -398,6 +447,7 @@ export class UI {
     e.preventDefault();
     const group = this.getGroupById(id);
     if (!group) return;
+    if (this.dragGroupContainer && group.parentElement !== this.dragGroupContainer) return;
     const rect = group.getBoundingClientRect();
     const dropAfter = e.clientY > rect.top + rect.height / 2;
     group.dataset.dropAfter = dropAfter ? "1" : "0";
@@ -414,13 +464,13 @@ export class UI {
   }
 
   onGroupDrop(e, id) {
-    if (!this.groupContainer) return;
     e.preventDefault();
     const dragId = this.dragGroupId || e.dataTransfer?.getData("text/plain");
     if (!dragId || dragId === id) return;
     const dragEl = this.getGroupById(dragId);
     const target = this.getGroupById(id);
     if (!dragEl || !target) return;
+    if (this.dragGroupContainer && target.parentElement !== this.dragGroupContainer) return;
     const dropAfter = target.dataset.dropAfter === "1";
     if (dropAfter) target.after(dragEl);
     else target.before(dragEl);
@@ -453,7 +503,13 @@ export class UI {
   }
 
   getGroupOrder() {
-    return Array.from(document.querySelectorAll(".group[data-group]")).map((g) => g.dataset.group);
+    const orders = {};
+    this.groupContainers.forEach((container) => {
+      const key = container.id || "default";
+      orders[key] = Array.from(container.querySelectorAll(".group[data-group]"))
+        .map((g) => g.dataset.group);
+    });
+    return orders;
   }
 
   getGroupCollapsedState() {
@@ -465,19 +521,35 @@ export class UI {
   }
 
   applyGroupOrder(order) {
-    if (!this.groupContainer || !order || !order.length) return;
+    if (!order || !this.groupContainers.length) return;
     const groups = new Map(this.groups.map((g) => [g.dataset.group, g]));
-    const used = new Set();
-    order.forEach((id) => {
-      const el = groups.get(id);
-      if (el) {
-        this.groupContainer.appendChild(el);
-        used.add(id);
-      }
-    });
-    for (const [id, el] of groups.entries()) {
-      if (!used.has(id)) this.groupContainer.appendChild(el);
+    const applyToContainer = (container, ids) => {
+      if (!container || !ids || !ids.length) return;
+      const used = new Set();
+      ids.forEach((id) => {
+        const el = groups.get(id);
+        if (el && el.parentElement === container) {
+          container.appendChild(el);
+          used.add(id);
+        }
+      });
+      Array.from(container.querySelectorAll(".group[data-group]")).forEach((el) => {
+        if (!used.has(el.dataset.group)) container.appendChild(el);
+      });
+    };
+
+    if (Array.isArray(order)) {
+      this.groupContainers.forEach((container) => {
+        const ids = order.filter((id) => container.querySelector(`[data-group="${id}"]`));
+        applyToContainer(container, ids);
+      });
+      return;
     }
+
+    this.groupContainers.forEach((container) => {
+      const key = container.id || "default";
+      applyToContainer(container, order[key]);
+    });
   }
 
   applyGroupCollapsed(state) {
@@ -505,7 +577,7 @@ export class UI {
       const raw = window.localStorage.getItem(this.layoutKey);
       if (!raw) return;
       const layout = JSON.parse(raw);
-      this.applyGroupOrder(layout.order);
+      this.applyGroupOrder(layout.order || layout.orders);
       this.groups = Array.from(document.querySelectorAll(".group[data-group]"));
       this.applyGroupCollapsed(layout.collapsed);
     } catch {}
@@ -531,6 +603,15 @@ export class UI {
     // Read current values from the DOM and normalize to numbers/booleans.
     return {
       pad: this.PAD,
+      go2rtcHost: this.el.hostInput?.value?.trim() || this.config.go2rtcHost || "",
+      go2rtcSrc: this.el.srcInput?.value?.trim() || this.config.src || "",
+      mqttUrl: this.el.mqttUrlInput?.value?.trim() || "",
+      mqttUsername: this.el.mqttUserInput?.value || "",
+      mqttPassword: this.el.mqttPassInput?.value || "",
+      mqttTopic: this.el.mqttTopicInput?.value?.trim() || "",
+      mqttRequestTopic: this.el.mqttRequestTopicInput?.value?.trim() || "",
+      mqttFanTopic: this.el.mqttFanTopicInput?.value?.trim() || "",
+      mqttFanRequestTopic: this.el.mqttFanRequestTopicInput?.value?.trim() || "",
       analysisMode: this.el.analysisMode?.value || "fixed",
       analysisDetail: this.el.analysisDetail?.value || "med",
       fftSize: parseInt(this.el.fftSize.value, 10),
@@ -595,6 +676,15 @@ export class UI {
       };
 
       set(this.el.fftSize, s.fftSize);
+      set(this.el.hostInput, s.go2rtcHost);
+      set(this.el.srcInput, s.go2rtcSrc);
+      set(this.el.mqttUrlInput, s.mqttUrl);
+      set(this.el.mqttUserInput, s.mqttUsername);
+      set(this.el.mqttPassInput, s.mqttPassword);
+      set(this.el.mqttTopicInput, s.mqttTopic);
+      set(this.el.mqttRequestTopicInput, s.mqttRequestTopic);
+      set(this.el.mqttFanTopicInput, s.mqttFanTopic);
+      set(this.el.mqttFanRequestTopicInput, s.mqttFanRequestTopic);
       set(this.el.smooth, s.smoothing);
       set(this.el.gain, s.gain);
       set(this.el.autoGain, s.autoGain, "checked");
@@ -627,6 +717,16 @@ export class UI {
 
   resetDefaults() {
     // Defaults match the HTML initial values.
+    if (this.el.hostInput) this.el.hostInput.value = this.defaults.go2rtcHost || "";
+    if (this.el.srcInput) this.el.srcInput.value = this.defaults.src || "";
+    const mqtt = this.defaults.mqtt || {};
+    if (this.el.mqttUrlInput) this.el.mqttUrlInput.value = mqtt.url || "";
+    if (this.el.mqttUserInput) this.el.mqttUserInput.value = mqtt.username || "";
+    if (this.el.mqttPassInput) this.el.mqttPassInput.value = mqtt.password || "";
+    if (this.el.mqttTopicInput) this.el.mqttTopicInput.value = mqtt.topic || "";
+    if (this.el.mqttRequestTopicInput) this.el.mqttRequestTopicInput.value = mqtt.requestTopic || "";
+    if (this.el.mqttFanTopicInput) this.el.mqttFanTopicInput.value = mqtt.fanTopic || "";
+    if (this.el.mqttFanRequestTopicInput) this.el.mqttFanRequestTopicInput.value = mqtt.fanRequestTopic || "";
     if (this.el.analysisMode) this.el.analysisMode.value = "fixed";
     if (this.el.analysisDetail) this.el.analysisDetail.value = "med";
     this.el.fftSize.value = "2048";

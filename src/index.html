@@ -19,46 +19,124 @@
       </button>
     </div>
 
-    <div class="group" data-group="source">
-      <div class="group-header">
-        <div class="group-title">Source</div>
-        <div class="group-actions">
-          <button class="icon-btn group-drag" type="button" aria-label="Move group" title="Move group" draggable="true">
-            <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
-              <circle cx="5" cy="4" r="1.2" />
-              <circle cx="5" cy="8" r="1.2" />
-              <circle cx="5" cy="12" r="1.2" />
-              <circle cx="11" cy="4" r="1.2" />
-              <circle cx="11" cy="8" r="1.2" />
-              <circle cx="11" cy="12" r="1.2" />
-            </svg>
-          </button>
-          <button class="icon-btn group-toggle" type="button" aria-label="Collapse group" aria-expanded="true" title="Collapse group">
-            <svg class="icon icon-chevron" viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </button>
+    <div class="section-title">Settings</div>
+    <div class="groups-grid" id="settingsGroups">
+      <div class="group" data-group="source">
+        <div class="group-header">
+          <div class="group-title">Source</div>
+          <div class="group-actions">
+            <button class="icon-btn group-drag" type="button" aria-label="Move group" title="Move group" draggable="true">
+              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+                <circle cx="5" cy="4" r="1.2" />
+                <circle cx="5" cy="8" r="1.2" />
+                <circle cx="5" cy="12" r="1.2" />
+                <circle cx="11" cy="4" r="1.2" />
+                <circle cx="11" cy="8" r="1.2" />
+                <circle cx="11" cy="12" r="1.2" />
+              </svg>
+            </button>
+            <button class="icon-btn group-toggle" type="button" aria-label="Collapse group" aria-expanded="true" title="Collapse group">
+              <svg class="icon icon-chevron" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="group-body">
+          <label class="control">Mode
+            <select id="sourceMode">
+              <option value="live" selected>Live (go2rtc)</option>
+              <option value="file">File</option>
+            </select>
+          </label>
+          <label class="control live-only">go2rtc Host
+            <input id="hostInput" type="text" placeholder="http://192.168.1.10:1984" />
+          </label>
+          <label class="control live-only">src
+            <input id="srcInput" type="text" placeholder="wp" />
+          </label>
+          <label class="control file-only file-input">File
+            <input id="fileInput" type="file" accept="audio/*,video/*" />
+          </label>
+          <div class="row live-only">
+            <button id="btnStart">Start</button>
+            <button id="btnStop" disabled>Stop</button>
+          </div>
+          <div class="pill">Fs: <b id="fsLabel">-</b> Hz | Nyq: <b id="nyqLabel">-</b> Hz</div>
+          <div class="tiny" id="status">Status: idle</div>
         </div>
       </div>
-      <div class="group-body">
-        <div class="pill">go2rtc: <b id="hostLabel"></b></div>
-        <div class="pill">src: <b id="srcLabel"></b></div>
-        <div class="pill">Fs: <b id="fsLabel">-</b> Hz | Nyq: <b id="nyqLabel">-</b> Hz</div>
-        <label class="control">Mode
-          <select id="sourceMode">
-            <option value="live" selected>Live (go2rtc)</option>
-            <option value="file">File</option>
-          </select>
-        </label>
-        <div class="row">
-          <button id="btnStart">Start</button>
-          <button id="btnStop" disabled>Stop</button>
+
+      <div class="group" data-group="mqtt">
+        <div class="group-header">
+          <div class="group-title">MQTT</div>
+          <div class="group-actions">
+            <button class="icon-btn group-drag" type="button" aria-label="Move group" title="Move group" draggable="true">
+              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+                <circle cx="5" cy="4" r="1.2" />
+                <circle cx="5" cy="8" r="1.2" />
+                <circle cx="5" cy="12" r="1.2" />
+                <circle cx="11" cy="4" r="1.2" />
+                <circle cx="11" cy="8" r="1.2" />
+                <circle cx="11" cy="12" r="1.2" />
+              </svg>
+            </button>
+            <button class="icon-btn group-toggle" type="button" aria-label="Collapse group" aria-expanded="true" title="Collapse group">
+              <svg class="icon icon-chevron" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+          </div>
         </div>
-        <div class="tiny" id="status">Status: idle</div>
+        <div class="group-body">
+          <div class="pill">Status: <b id="mqttStatus">-</b></div>
+          <div class="pill">Compressor Hz: <b id="mqttValue">-</b></div>
+          <div class="pill">Fan Hz: <b id="mqttFanValue">-</b></div>
+          <div class="tiny">Topic: <span id="mqttTopicLabel">-</span></div>
+          <div class="tiny">Fan Topic: <span id="mqttFanTopicLabel">-</span></div>
+          <label class="control">URL
+            <input id="mqttUrlInput" type="text" placeholder="ws://192.168.1.10:1884" />
+          </label>
+          <label class="control">User
+            <input id="mqttUserInput" type="text" />
+          </label>
+          <label class="control">Pass
+            <input id="mqttPassInput" type="password" />
+          </label>
+          <label class="control">Topic
+            <input id="mqttTopicInput" type="text" />
+          </label>
+          <label class="control">Request Topic
+            <input id="mqttRequestTopicInput" type="text" />
+          </label>
+          <label class="control">Fan Topic
+            <input id="mqttFanTopicInput" type="text" />
+          </label>
+          <label class="control">Fan Request
+            <input id="mqttFanRequestTopicInput" type="text" />
+          </label>
+          <label class="control">Polling enabled
+            <input id="mqttPollEnabled" type="checkbox" checked />
+          </label>
+          <label class="control">Polling (s)
+            <input id="mqttPoll" type="number" min="1" max="60" step="1" value="1" />
+          </label>
+          <label class="control">Marker color
+            <input id="mqttColor" type="color" value="#f6b21a" />
+          </label>
+          <label class="control">Fan color
+            <input id="mqttFanColor" type="color" value="#3bd4ff" />
+          </label>
+          <label class="control">Harmonics
+            <input id="mqttHarmonics" type="checkbox" checked />
+          </label>
+        </div>
       </div>
     </div>
 
-    <div class="group" data-group="analysis">
+    <div class="section-title">Controls</div>
+    <div class="groups-grid" id="controlGroups">
+      <div class="group" data-group="analysis">
       <div class="group-header">
         <div class="group-title">Analysis</div>
         <div class="group-actions">
@@ -118,7 +196,7 @@
       </div>
     </div>
 
-    <div class="group" data-group="range">
+      <div class="group" data-group="range">
       <div class="group-header">
         <div class="group-title">Range + Filters</div>
         <div class="group-actions">
@@ -158,7 +236,7 @@
       </div>
     </div>
 
-    <div class="group" data-group="expander">
+      <div class="group" data-group="expander">
       <div class="group-header">
         <div class="group-title">Expander</div>
         <div class="group-actions">
@@ -202,7 +280,7 @@
       </div>
     </div>
 
-    <div class="group" data-group="output">
+      <div class="group" data-group="output">
       <div class="group-header">
         <div class="group-title">Output</div>
         <div class="group-actions">
@@ -244,49 +322,6 @@
       </div>
     </div>
 
-    <div class="group" data-group="mqtt">
-      <div class="group-header">
-        <div class="group-title">MQTT</div>
-        <div class="group-actions">
-          <button class="icon-btn group-drag" type="button" aria-label="Move group" title="Move group" draggable="true">
-            <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
-              <circle cx="5" cy="4" r="1.2" />
-              <circle cx="5" cy="8" r="1.2" />
-              <circle cx="5" cy="12" r="1.2" />
-              <circle cx="11" cy="4" r="1.2" />
-              <circle cx="11" cy="8" r="1.2" />
-              <circle cx="11" cy="12" r="1.2" />
-            </svg>
-          </button>
-          <button class="icon-btn group-toggle" type="button" aria-label="Collapse group" aria-expanded="true" title="Collapse group">
-            <svg class="icon icon-chevron" viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div class="group-body">
-        <div class="pill">Status: <b id="mqttStatus">-</b></div>
-        <div class="pill">Compressor Hz: <b id="mqttValue">-</b></div>
-        <div class="pill">Fan Hz: <b id="mqttFanValue">-</b></div>
-        <div class="tiny">Topic: <span id="mqttTopic">-</span></div>
-        <div class="tiny">Fan Topic: <span id="mqttFanTopic">-</span></div>
-        <label class="control">Polling enabled
-          <input id="mqttPollEnabled" type="checkbox" checked />
-        </label>
-        <label class="control">Polling (s)
-          <input id="mqttPoll" type="number" min="1" max="60" step="1" value="1" />
-        </label>
-        <label class="control">Marker color
-          <input id="mqttColor" type="color" value="#f6b21a" />
-        </label>
-        <label class="control">Fan color
-          <input id="mqttFanColor" type="color" value="#3bd4ff" />
-        </label>
-        <label class="control">Harmonics
-          <input id="mqttHarmonics" type="checkbox" checked />
-        </label>
-      </div>
     </div>
   </header>
 
@@ -295,9 +330,7 @@
       <h2>File Source</h2>
       <div class="file-controls">
         <div class="row file-row">
-          <label class="control file-input">File
-            <input id="fileInput" type="file" accept="audio/*,video/*" />
-          </label>
+          <div class="pill file-name">File: <b id="fileName">-</b></div>
           <label class="control">Start (s)
             <input id="fileStart" type="number" min="0" step="0.01" value="0" />
           </label>
